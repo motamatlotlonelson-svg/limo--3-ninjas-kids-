@@ -1,1 +1,6 @@
+# Program 2 - Load-Use Hazard Example
+# This program will cause a load-use stall
 
+eketsa-i  thuso0, lefela, 100    # base address = 100
+lata      thuso1, 0(thuso0)      # load from memory
+eketsa    thuso2, thuso1, thuso1 # use immediately → stall needed
