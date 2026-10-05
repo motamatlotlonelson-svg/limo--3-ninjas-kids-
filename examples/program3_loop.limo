@@ -1,1 +1,8 @@
+# Program 3 - Simple Loop with Branch
 
+eketsa-i  thuso0, lefela, 0      # i = 0
+eketsa-i  thuso1, lefela, 5      # limit = 5
+
+loop:
+eketsa-i  thuso0, thuso0, 1      # i = i + 1
+haeba-sa-lekane thuso0, thuso1, loop  # if i != 5, go back to loop
