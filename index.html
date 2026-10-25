@@ -1,1 +1,38 @@
-
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LIMO Assembler</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>LIMO <small>Sesotho assembly for a RISC-V-derived processor</small></h1>
+</header>
+<main>
+  <section aria-labelledby="ed">
+    <h2 id="ed">Program</h2>
+    <label for="example">Example</label>
+    <select id="example">
+      <option value="">(choose an example)</option>
+      <option value="program1_arithmetic.limo">1 - Arithmetic</option>
+      <option value="program2_load_use.limo">2 - Load-use hazard</option>
+      <option value="program3_loop.limo">3 - Loop with branch</option>
+    </select>
+    <textarea id="source" spellcheck="false" rows="12" aria-label="LIMO source code">eketsa-i thuso0, lefela, 5
+eketsa-i thuso1, lefela, 7
+eketsa    thuso2, thuso0, thuso1</textarea>
+    <button id="assemble" type="button">Assemble</button>
+    <p id="status" role="status"></p>
+    <ul id="errors" class="errors"></ul>
+  </section>
+  <section aria-labelledby="mc">
+    <h2 id="mc">Machine code</h2>
+    <div class="scroll" id="output"><p>Press Assemble.</p></div>
+  </section>
+</main>
+<footer>CS3520 - National University of Lesotho. Milestone M2: assembler only; the pipeline arrives in M3-M4.</footer>
+<script type="module" src="src/ui/main.js"></script>
+</body>
+</html>
