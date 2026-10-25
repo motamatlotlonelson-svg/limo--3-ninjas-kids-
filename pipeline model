@@ -1,0 +1,84 @@
+# LIMO pipeline-register data model (M2)
+
+Matches `src/core/pipeline.js`. Every register has `valid`; `valid:false` is a **bubble**
+(all control signals 0, so it can change nothing). `pc`, `seq` (fetch order) and `text`
+travel with each instruction for the datapath view and the pipeline chart only; hardware
+would not need them.
+
+| Register | Fields | Why each field exists |
+|---|---|---|
+| **IF/ID** | `pc`, `pcPlus4`, `instr` | `pc` and `instr` feed decode; `pcPlus4` is shown on the datapath |
+| **ID/EX** | `rs1`, `rs2`, `rd`, `rv1`, `rv2`, `imm`, `pc`, `ctrl{regWrite, aluSrc, aluOp, memRead, memWrite, memToReg, branch, usesRs1, usesRs2}` | `rv1/rv2` = register values read in ID; `rs1/rs2` are kept ONLY so the forwarding unit can compare them with the later `rd` values; `pc`+`imm` give the branch target in EX |
+| **EX/MEM** | `aluResult`, `rv2`, `rd`, `branchTaken`, `branchTarget`, `ctrl{regWrite, memRead, memWrite, memToReg}` | `aluResult` is the address (lw/sw) or result; `rv2` (after forwarding) is the store data; `branchTaken` = PCSrc, kept for display because the PC is already redirected in the same cycle |
+| **MEM/WB** | `memData`, `aluResult`, `rd`, `ctrl{regWrite, memToReg}` | the MemtoReg mux picks `memData` or `aluResult` for write-back |
+
+**Control signals consumed early are dropped:** `aluSrc`, `aluOp`, `branch` are used in EX and not
+copied to EX/MEM; `memRead`/`memWrite` are used in MEM and not copied to MEM/WB; only `regWrite`
+and `memToReg` reach WB. `usesRs1/usesRs2` live only in ID/EX (forwarding and stall decisions).
+
+**Where forwarding gets its register numbers:** `rs1/rs2` from ID/EX (consumer) against `rd` in
+EX/MEM and MEM/WB (producers). x0 is never forwarded.
+
+**Architectural state (the ISA specifies):** 16 registers, PC, instruction and data memory.
+**Microarchitectural state (the ISA must not specify):** the four pipeline registers above, the
+stall/flush logic. Different implementations (a 3-stage or 7-stage LIMO) must run the same programs
+with the same results, only at different cycle counts. This is your A6(b) answer.
+
+---
+
+## The code (excerpts from `src/core/`)
+
+### Control word, also carried by every bubble (`control.js`)
+```js
+export const NO_CTRL = Object.freeze({
+  regWrite: 0, aluSrc: 0, aluOp: 'ADD', memRead: 0, memWrite: 0, memToReg: 0,
+  branch: 'none', usesRs1: 0, usesRs2: 0,
+});
+```
+
+### A bubble and the whole machine state (`pipeline.js`)
+```js
+const bubble = () => ({ valid: false, ctrl: { ...NO_CTRL }, rd: 0, rs1: 0, rs2: 0 });
+
+export function createCpu(program, opts = {}) {
+  const { forwarding = true, dmemSize = 1024, data = {} } = opts;
+  const dmem = new Uint8Array(dmemSize);
+  const view = new DataView(dmem.buffer);
+  for (const [addr, val] of Object.entries(data)) view.setUint32(Number(addr), val >>> 0, true);
+  return {
+    cycle: 0, pc: 0,
+    regs: new Array(16).fill(0),
+    imem: program.map((i) => i.word),
+    itext: program.map((i) => i.text),
+    dmem,
+    IF_ID: bubble(), ID_EX: bubble(), EX_MEM: bubble(), MEM_WB: bubble(),
+    forwarding, halted: program.length === 0, fault: null, nextSeq: 0,
+    stats: { cycles: 0, retired: 0, stalls: 0, flushes: 0, squashed: 0, forwards: 0 },
+    last: null,   // narration/trace record of the cycle just executed
+  };
+}
+```
+
+### The four pipeline registers (built inside `step()`)
+```js
+// IF/ID
+fetched = { valid: true, pc: prev.pc, pcPlus4: prev.pc + 4, instr: prev.imem[prev.pc / 4],
+            text: prev.itext[prev.pc / 4], seq: prev.nextSeq,
+            ctrl: { ...NO_CTRL }, rd: 0, rs1: 0, rs2: 0 };
+
+// ID/EX
+s.ID_EX = { valid: true, pc: f.pc, seq: f.seq, text: f.text, mnemonic: d.mnemonic,
+            rs1: d.rs1, rs2: d.rs2, rd: d.rd, rv1: s.regs[d.rs1], rv2: s.regs[d.rs2],
+            imm: d.imm, ctrl: d.ctrl };
+
+// EX/MEM
+s.EX_MEM = { valid: true, pc: x.pc, seq: x.seq, text: x.text, aluResult: result, rv2: b, rd: x.rd,
+             branchTaken: taken, branchTarget: target,
+             ctrl: { memRead: x.ctrl.memRead, memWrite: x.ctrl.memWrite,
+                     memToReg: x.ctrl.memToReg, regWrite: x.ctrl.regWrite } };
+
+// MEM/WB
+s.MEM_WB = { valid: true, pc: m.pc, seq: m.seq, text: m.text, rd: m.rd, memData,
+             aluResult: m.aluResult,
+             ctrl: { regWrite: m.ctrl.regWrite, memToReg: m.ctrl.memToReg } };
+```
