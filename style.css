@@ -1,1 +1,23 @@
-
+:root { --bg:#fff; --fg:#1b1b1b; --muted:#555; --line:#c9c9c9; --accent:#1f3a8a; --err:#a40000;
+  --c0:#fde2e2; --c1:#fff1c9; --c2:#dff5e1; --c3:#dbeafe; --c4:#ece0fb; --c5:#e6e6e6; }
+@media (prefers-color-scheme: dark) { :root { --bg:#14161a; --fg:#ececec; --muted:#a5a5a5; --line:#3a3d44; --accent:#8fb0ff; --err:#ff8a8a;
+  --c0:#5a2a2a; --c1:#5a4a1a; --c2:#24472b; --c3:#233b61; --c4:#3f2e5e; --c5:#3a3a3a; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.45 system-ui, sans-serif;
+  padding: env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0); }
+header, footer { padding:.75rem 1rem; } footer { color:var(--muted); font-size:.85rem; }
+h1 { margin:0; font-size:1.4rem; color:var(--accent); } h1 small { font-size:.7em; color:var(--muted); font-weight:400; }
+main { display:grid; grid-template-columns: minmax(280px, 1fr) 2fr; gap:1rem; padding:0 1rem; }
+@media (max-width: 800px) { main { grid-template-columns: 1fr; } }
+textarea { width:100%; font:14px/1.4 ui-monospace, monospace; background:var(--bg); color:var(--fg); border:1px solid var(--line); padding:.5rem; }
+select, button { font:inherit; padding:.45rem .8rem; margin:.4rem 0; background:var(--bg); color:var(--fg); border:1px solid var(--accent); border-radius:4px; }
+button { background:var(--accent); color:var(--bg); cursor:pointer; font-weight:600; }
+.errors { color:var(--err); padding-left:1.2rem; } .errors li::marker { content:"\26A0  "; }
+.scroll { overflow-x:auto; }
+table { border-collapse:collapse; width:100%; font:13px ui-monospace, monospace; }
+th, td { border-bottom:1px solid var(--line); padding:.3rem .5rem; text-align:left; white-space:nowrap; vertical-align:top; }
+.fld { display:inline-flex; flex-direction:column; align-items:center; padding:1px 4px; margin-right:3px; border:1px solid var(--line); border-radius:3px; }
+.fld i { font-size:.65rem; font-style:normal; color:var(--muted); }
+.k0 { background:var(--c0); } .k1 { background:var(--c1); } .k2 { background:var(--c2); }
+.k3 { background:var(--c3); } .k4 { background:var(--c4); } .k5 { background:var(--c5); }
+.k0 { border-style:solid; } .k1 { border-style:dashed; } .k2 { border-style:dotted; } .k3 { border-style:double; }
