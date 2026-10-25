@@ -1,38 +1,92 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>LIMO Assembler</title>
-<link rel="stylesheet" href="style.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="LIMO Sesotho assembly and five-stage pipeline learning simulator">
+  <title>LIMO | Pipeline Simulator</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<header>
-  <h1>LIMO <small>Sesotho assembly for a RISC-V-derived processor</small></h1>
-</header>
-<main>
-  <section aria-labelledby="ed">
-    <h2 id="ed">Program</h2>
-    <label for="example">Example</label>
-    <select id="example">
-      <option value="">(choose an example)</option>
-      <option value="program1_arithmetic.limo">1 - Arithmetic</option>
-      <option value="program2_load_use.limo">2 - Load-use hazard</option>
-      <option value="program3_loop.limo">3 - Loop with branch</option>
-    </select>
-    <textarea id="source" spellcheck="false" rows="12" aria-label="LIMO source code">eketsa-i thuso0, lefela, 5
+  <header class="topbar">
+    <div class="brand"><div class="brand-mark" aria-hidden="true">L</div><div><h1>LIMO <span>Pipeline Simulator</span></h1><p>Sesotho assembly · RISC-V-derived teaching processor</p></div></div>
+    <div class="topbar-right"><span class="status-dot"></span><span id="app-status" role="status">UI ready · waiting for processor connection</span><button class="button button-quiet" id="help-button" type="button" title="Show help">Help</button></div>
+  </header>
+
+  <nav class="tabs" aria-label="Simulator sections"><a href="#workbench" class="active">Workbench</a><a href="#pipeline">Pipeline</a><a href="#datapath">Datapath</a><a href="#state">Registers & memory</a></nav>
+
+  <main class="page" id="workbench">
+    <section class="intro"><div><p class="eyebrow">COMPUTER ORGANISATION & ARCHITECTURE</p><h2>Explore how a program moves through the CPU.</h2><p class="muted">Assemble a LIMO program, step through clock cycles, and inspect the datapath, control signals and hazards.</p></div><div class="cycle-badge"><span class="muted">CURRENT CYCLE</span><strong id="cycle-number">0</strong></div></section>
+
+    <section class="toolbar panel" aria-label="Execution controls">
+      <div class="control-group"><button class="button button-primary" id="step-button" type="button" title="Advance one clock cycle">▶ Step</button><button class="button" id="run-button" type="button" title="Run continuously">Run</button><button class="button" id="pause-button" type="button" title="Pause execution">Pause</button><button class="button" id="reset-button" type="button" title="Reset processor state">Reset</button><button class="button" id="step-back-button" type="button" title="Return to the previous cycle">↶ Step back</button></div>
+      <div class="control-group toggles"><label class="switch-label"><input id="forwarding-toggle" type="checkbox" checked><span class="switch"></span> Forwarding ON</label><label class="switch-label"><input id="breakpoints-toggle" type="checkbox"><span class="switch"></span> Breakpoints</label></div>
+    </section>
+
+    <div class="main-grid">
+      <section class="panel editor-panel" aria-labelledby="program-heading">
+        <div class="panel-heading"><div><p class="eyebrow">01 · INPUT</p><h2 id="program-heading">Program & assembler</h2></div><span class="tag">LIMO ASM</span></div>
+        <label for="example">Example program</label>
+        <select id="example"><option value="">Choose an example…</option><option value="program1_arithmetic.limo">1 · Arithmetic</option><option value="program2_load_use.limo">2 · Load-use hazard</option><option value="program3_loop.limo">3 · Loop with branch</option><option value="program4_forwarding.limo">4 · RAW forwarding (add example file)</option><option value="program5_branch.limo">5 · Branch behaviour (add example file)</option></select>
+        <label for="source" class="label-spaced">Source code</label>
+        <textarea id="source" spellcheck="false" rows="12" aria-label="LIMO source code">eketsa-i thuso0, lefela, 5
 eketsa-i thuso1, lefela, 7
-eketsa    thuso2, thuso0, thuso1</textarea>
-    <button id="assemble" type="button">Assemble</button>
-    <p id="status" role="status"></p>
-    <ul id="errors" class="errors"></ul>
-  </section>
-  <section aria-labelledby="mc">
-    <h2 id="mc">Machine code</h2>
-    <div class="scroll" id="output"><p>Press Assemble.</p></div>
-  </section>
-</main>
-<footer>CS3520 - National University of Lesotho. Milestone M2: assembler only; the pipeline arrives in M3-M4.</footer>
-<script type="module" src="src/ui/main.js"></script>
+eketsa thuso2, thuso0, thuso1</textarea>
+        <div class="editor-actions"><button class="button button-primary" id="assemble" type="button">Assemble program</button><button class="button" id="load-file-button" type="button" title="Load a .limo source file">Open .limo file</button><input id="file-input" type="file" accept=".limo,.txt" hidden></div>
+        <p id="status" class="status-line" role="status">Ready to assemble.</p><ul id="errors" class="errors" aria-live="polite"></ul>
+        <div class="panel-subsection"><div class="subheading"><h3>Machine code</h3><span class="muted small">Address · source · hex · encoded fields</span></div><div class="scroll" id="output"><p class="empty-state">Assemble a program to display its machine code.</p></div></div>
+      </section>
+
+      <section class="panel pipeline-panel" id="pipeline" aria-labelledby="pipeline-heading">
+        <div class="panel-heading"><div><p class="eyebrow">02 · EXECUTION</p><h2 id="pipeline-heading">Five-stage pipeline</h2></div><span class="tag tag-blue">RV32I-style</span></div>
+        <p class="muted small">Each column represents a pipeline stage for the selected clock cycle. Live stage values must be supplied by the processor engine.</p>
+        <div class="stage-grid" role="group" aria-label="Five pipeline stages">
+          <article class="stage-card" data-stage="IF"><div class="stage-top"><span class="stage-index">01</span><h3>IF</h3></div><p>Instruction Fetch</p><dl><dt>PC</dt><dd id="if-pc">—</dd><dt>Instruction</dt><dd id="if-instruction">Empty</dd></dl></article>
+          <article class="stage-card" data-stage="ID"><div class="stage-top"><span class="stage-index">02</span><h3>ID</h3></div><p>Instruction Decode</p><dl><dt>rs1 / rs2</dt><dd id="id-registers">—</dd><dt>Control</dt><dd id="id-control">—</dd></dl></article>
+          <article class="stage-card" data-stage="EX"><div class="stage-top"><span class="stage-index">03</span><h3>EX</h3></div><p>Execute / ALU</p><dl><dt>ALU input A</dt><dd id="ex-a">—</dd><dt>ALU result</dt><dd id="ex-result">—</dd></dl></article>
+          <article class="stage-card" data-stage="MEM"><div class="stage-top"><span class="stage-index">04</span><h3>MEM</h3></div><p>Memory Access</p><dl><dt>Address</dt><dd id="mem-address">—</dd><dt>Read / write</dt><dd id="mem-operation">—</dd></dl></article>
+          <article class="stage-card" data-stage="WB"><div class="stage-top"><span class="stage-index">05</span><h3>WB</h3></div><p>Write Back</p><dl><dt>Destination</dt><dd id="wb-destination">—</dd><dt>Value</dt><dd id="wb-value">—</dd></dl></article>
+        </div>
+        <div class="panel-subsection"><div class="subheading"><h3>Pipeline registers</h3><span class="muted small">Values between stages</span></div><div class="register-pipeline"><article><b>IF/ID</b><code id="if-id-register">Empty</code></article><article><b>ID/EX</b><code id="id-ex-register">Empty</code></article><article><b>EX/MEM</b><code id="ex-mem-register">Empty</code></article><article><b>MEM/WB</b><code id="mem-wb-register">Empty</code></article></div></div>
+        <div class="panel-subsection"><div class="subheading"><h3>Instruction-by-cycle chart</h3><span class="muted small">Pipeline history</span></div><div class="table-scroll"><table class="data-table" id="pipeline-chart"><thead><tr><th>Instruction</th><th>C1</th><th>C2</th><th>C3</th><th>C4</th><th>C5</th></tr></thead><tbody><tr><td colspan="6" class="empty-cell">Run or step the processor to populate the chart.</td></tr></tbody></table></div></div>
+      </section>
+    </div>
+
+    <div class="lower-grid">
+      <section class="panel" id="datapath" aria-labelledby="datapath-heading"><div class="panel-heading"><div><p class="eyebrow">03 · DATA MOVEMENT</p><h2 id="datapath-heading">Datapath values</h2></div></div>
+        <div class="datapath-grid"><div class="value-card"><span>Program counter (PC)</span><strong id="pc-value">—</strong></div><div class="value-card"><span>PC + 4</span><strong id="pc4-value">—</strong></div><div class="value-card"><span>Branch target</span><strong id="branch-target">—</strong></div><div class="value-card"><span>Register operand A</span><strong id="operand-a">—</strong></div><div class="value-card"><span>Register operand B</span><strong id="operand-b">—</strong></div><div class="value-card"><span>Immediate</span><strong id="immediate-value">—</strong></div><div class="value-card"><span>ALU input A / B</span><strong id="alu-inputs">— / —</strong></div><div class="value-card"><span>ALU result</span><strong id="alu-value">—</strong></div><div class="value-card"><span>Memory address</span><strong id="memory-address">—</strong></div><div class="value-card"><span>Memory data</span><strong id="memory-data">—</strong></div><div class="value-card"><span>Write-back value</span><strong id="writeback-value">—</strong></div><div class="value-card"><span>Next PC source</span><strong id="pc-source">—</strong></div></div>
+        <p class="hint">Active wires and units should be highlighted by the simulator engine; keep value labels visible so colour is never the only cue.</p>
+      </section>
+
+      <section class="panel" aria-labelledby="control-heading"><div class="panel-heading"><div><p class="eyebrow">04 · CONTROL UNIT</p><h2 id="control-heading">Control signals</h2></div></div>
+        <div class="table-scroll"><table class="data-table"><thead><tr><th>Signal</th><th>Value</th><th>Meaning</th></tr></thead><tbody>
+          <tr><td><code>RegWrite</code></td><td id="sig-regwrite"><span class="signal unknown">—</span></td><td>Write a value to the destination register.</td></tr><tr><td><code>ALUSrc</code></td><td id="sig-alusrc"><span class="signal unknown">—</span></td><td>Select register data or an immediate for ALU input B.</td></tr><tr><td><code>ALU control</code></td><td id="sig-alu"><span class="signal unknown">—</span></td><td>Choose the ALU operation.</td></tr><tr><td><code>MemRead</code></td><td id="sig-memread"><span class="signal unknown">—</span></td><td>Read from data memory.</td></tr><tr><td><code>MemWrite</code></td><td id="sig-memwrite"><span class="signal unknown">—</span></td><td>Write to data memory.</td></tr><tr><td><code>MemtoReg</code></td><td id="sig-memtoreg"><span class="signal unknown">—</span></td><td>Select memory data or ALU result for write-back.</td></tr><tr><td><code>Branch</code></td><td id="sig-branch"><span class="signal unknown">—</span></td><td>Instruction requests a conditional branch.</td></tr><tr><td><code>PCSrc</code></td><td id="sig-pcsrc"><span class="signal unknown">—</span></td><td>Select the next program-counter source.</td></tr>
+        </tbody></table></div>
+      </section>
+
+      <section class="panel" aria-labelledby="hazards-heading"><div class="panel-heading"><div><p class="eyebrow">05 · DEPENDENCIES</p><h2 id="hazards-heading">Hazards & forwarding</h2></div><span class="tag tag-amber" id="hazard-status">No cycle data</span></div>
+        <div class="hazard-grid"><div class="value-card"><span>Hazard type</span><strong id="hazard-type">—</strong></div><div class="value-card"><span>ForwardA</span><strong id="forward-a">—</strong></div><div class="value-card"><span>ForwardB</span><strong id="forward-b">—</strong></div><div class="value-card"><span>Bubbles inserted</span><strong id="bubble-count">0</strong></div><div class="value-card"><span>Instructions flushed</span><strong id="flush-count">0</strong></div></div>
+        <div class="notice" id="hazard-explanation" role="status">Step the processor to see detected RAW, load-use or control hazards and the resolution path.</div>
+      </section>
+
+      <section class="panel" aria-labelledby="stats-heading"><div class="panel-heading"><div><p class="eyebrow">06 · PERFORMANCE</p><h2 id="stats-heading">Statistics</h2></div></div>
+        <div class="stats-grid"><div class="stat-card"><span>Cycles</span><strong id="stat-cycles">0</strong></div><div class="stat-card"><span>Instructions retired</span><strong id="stat-retired">0</strong></div><div class="stat-card"><span>CPI</span><strong id="stat-cpi">—</strong></div><div class="stat-card"><span>Stalls</span><strong id="stat-stalls">0</strong></div><div class="stat-card"><span>Flushes</span><strong id="stat-flushes">0</strong></div></div>
+      </section>
+
+      <section class="panel" id="state" aria-labelledby="state-heading"><div class="panel-heading"><div><p class="eyebrow">07 · ARCHITECTURAL STATE</p><h2 id="state-heading">Register file</h2></div><span class="muted small">Sesotho register names</span></div>
+        <div class="table-scroll"><table class="data-table"><thead><tr><th>Register</th><th>Sesotho name</th><th>Value (dec)</th><th>Value (hex)</th></tr></thead><tbody id="register-table-body"><tr><td colspan="4" class="empty-cell">Register state will appear when connected to the processor engine.</td></tr></tbody></table></div>
+        <div class="panel-subsection"><div class="subheading"><h3>Data memory</h3><span class="muted small">Changed values should be highlighted</span></div><div class="table-scroll"><table class="data-table"><thead><tr><th>Address</th><th>Value (dec)</th><th>Value (hex)</th><th>Last access</th></tr></thead><tbody id="memory-table-body"><tr><td colspan="4" class="empty-cell">Memory state will appear when connected to the processor engine.</td></tr></tbody></table></div></div>
+      </section>
+
+      <section class="panel narration-panel" aria-labelledby="narration-heading"><div class="panel-heading"><div><p class="eyebrow">08 · LEARNING MODE</p><h2 id="narration-heading">Cycle narration</h2></div><label class="language-select" for="narration-language">Language<select id="narration-language"><option value="en">English</option><option value="st">Sesotho</option></select></label></div>
+        <div class="narration-card"><span class="narration-icon" aria-hidden="true">i</span><div><h3 id="narration-title">Ready to explore</h3><p id="narration-text">Assemble a program, then step through one clock cycle at a time. The explanation for each stage will appear here once the processor engine is connected.</p></div></div>
+        <div class="tooltip-list"><h3>Stage guide</h3><div class="guide-grid"><p title="Instruction Fetch: use the PC to locate the next instruction."><b>IF</b> — Fetch instruction</p><p title="Instruction Decode: interpret the instruction and read registers."><b>ID</b> — Decode instruction</p><p title="Execute: perform the ALU operation or evaluate a branch."><b>EX</b> — Execute operation</p><p title="Memory: access data memory for load and store instructions."><b>MEM</b> — Access memory</p><p title="Write Back: write the result into the register file when required."><b>WB</b> — Write result back</p></div></div>
+      </section>
+    </div>
+    <footer class="footer"><span>LIMO · CS3520 · National University of Lesotho</span><span>Static browser application · no server required</span></footer>
+  </main>
+  <dialog id="help-dialog" class="help-dialog"><form method="dialog"><button class="dialog-close" aria-label="Close help">×</button><p class="eyebrow">QUICK HELP</p><h2>Using the LIMO simulator</h2><ol><li>Choose or type a LIMO program.</li><li>Select <b>Assemble program</b> to validate and encode it.</li><li>Use <b>Step</b> to advance one clock cycle; use Run and Pause for continuous execution.</li><li>Inspect pipeline stages, datapath values, control signals, hazards and architectural state.</li><li>Reset before trying a different program.</li></ol><p class="muted small">The interface panels need to be connected to your team's JavaScript processor engine before they display live execution data.</p><button class="button button-primary" value="close">Got it</button></form></dialog>
+  <script type="module" src="src/ui/main.js"></script>
+  <script type="module" src="src/ui/dashboard.js"></script>
 </body>
 </html>
